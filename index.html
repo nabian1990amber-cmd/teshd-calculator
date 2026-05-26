@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>极速高清转码 · 降本效果计算器</title>
+<style>
+  :root {
+    --primary: #00c853;
+    --primary-dark: #00a344;
+    --primary-bg: #e8f8ee;
+    --primary-bg-deep: #d4f2de;
+    --blue: #006eff;
+    --blue-light: #e8f1ff;
+    --red: #ff4d4f;
+    --red-bg: #fff1f0;
+    --orange: #fa8c16;
+    --orange-bg: #fff7e6;
+    --gray-0: #fff;
+    --gray-1: #f5f7fa;
+    --gray-2: #e8ebf0;
+    --gray-3: #c4c6cf;
+    --gray-4: #8a8f99;
+    --gray-5: #595d66;
+    --gray-6: #2b2f36;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 2px 16px rgba(0,0,0,0.06);
+    --shadow-lg: 0 4px 24px rgba(0,0,0,0.10);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    background: var(--gray-1);
+    color: var(--gray-6);
+    line-height: 1.6;
+    padding: 24px;
+  }
+  .container { max-width: 1000px; margin: 0 auto; }
+
+  /* ===== 页头 ===== */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .page-header h1 { font-size: 20px; font-weight: 600; }
+  .page-header .ref-link {
+    font-size: 12px;
+    color: var(--gray-4);
+  }
+  .page-header .ref-link a { color: var(--blue); text-decoration: none; }
+
+  /* ===== 输入参数面板 ===== */
+  .input-panel {
+    background: var(--gray-0);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .input-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .input-panel-header .title {
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* 场景切换标签（已废弃，改为下拉选择） */
+
+  /* 预设 */
+  .presets-row {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;
+  }
+  .preset-chip {
+    padding: 4px 12px;
+    font-size: 12px;
+    border: 1px solid var(--gray-2);
+    border-radius: 16px;
+    background: var(--gray-0);
+    color: var(--gray-5);
+    cursor: pointer;
+    transition: all .15s;
+    user-select: none;
+  }
+  .preset-chip:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+  .preset-chip.active { border-color: var(--blue); color: #fff; background: var(--blue); }
+
+  /* 表单 */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px 20px;
+  }
+  .fg { display: flex; flex-direction: column; gap: 4px; }
+  .fg.span2 { grid-column: span 2; }
+  .fg label { font-size: 12px; font-weight: 500; color: var(--gray-5); }
+  .fg label .u { font-weight: 400; color: var(--gray-4); }
+  .fg input, .fg select {
+    height: 34px;
+    border: 1px solid var(--gray-2);
+    border-radius: 6px;
+    padding: 0 10px;
+    font-size: 13px;
+    color: var(--gray-6);
+    outline: none;
+    transition: border-color .2s;
+  }
+  .fg input:focus, .fg select:focus { border-color: var(--blue); }
+  .fg select { cursor: pointer; }
+  .fg .hint { font-size: 11px; color: var(--gray-4); }
+
+  .calc-btn {
+    display: block;
+    width: 100%;
+    height: 42px;
+    background: var(--blue);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 18px;
+    transition: opacity .2s;
+  }
+  .calc-btn:hover { opacity: .88; }
+
+  .hidden { display: none !important; }
+
+  /* ===== 结果面板：降本效果汇总（参照截图） ===== */
+  .result-panel {
+    background: var(--gray-0);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  /* 顶部标题行 */
+  .result-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px 0;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .result-header .title { font-size: 16px; font-weight: 600; }
+  .result-header .right-inputs {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+    color: var(--gray-5);
+  }
+  .result-header .ri-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .result-header .ri-group label { color: var(--gray-4); white-space: nowrap; }
+  .result-header .ri-group input {
+    width: 80px;
+    height: 30px;
+    border: 1px solid var(--gray-2);
+    border-radius: 6px;
+    padding: 0 8px;
+    font-size: 13px;
+    color: var(--gray-6);
+    outline: none;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    transition: border-color .2s;
+  }
+  .result-header .ri-group input:focus { border-color: var(--blue); }
+  .result-header .ri-group .ri-unit { color: var(--gray-4); font-size: 12px; }
+
+  /* 大卡片：净节省费用 */
+  .hero-card {
+    margin: 16px 24px;
+    background: var(--primary-bg);
+    border-radius: var(--radius);
+    padding: 32px 24px 28px;
+    text-align: center;
+    position: relative;
+  }
+  .hero-card .icon-circle {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+  }
+  .hero-card .icon-circle svg { fill: #fff; width: 28px; height: 28px; }
+  .hero-card .hero-label { font-size: 14px; color: var(--gray-5); margin-bottom: 4px; }
+  .hero-card .hero-amount {
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--primary-dark);
+    line-height: 1.15;
+  }
+  .hero-card .hero-amount.negative { color: var(--red); }
+  .hero-card .sub-metrics {
+    display: flex;
+    justify-content: center;
+    gap: 28px;
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--gray-5);
+  }
+  .hero-card .sub-metrics .sm-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .hero-card .sub-metrics .sm-icon { font-size: 14px; }
+  .hero-card .sub-metrics .sm-val { font-weight: 600; color: var(--gray-6); }
+
+  /* 盈亏平衡提示条 */
+  .balance-bar {
+    margin: 0 24px 16px;
+    padding: 12px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .balance-bar.profit { background: var(--primary-bg); color: var(--primary-dark); }
+  .balance-bar.loss { background: var(--red-bg); color: var(--red); }
+  .balance-bar.near { background: var(--orange-bg); color: var(--orange); }
+  .balance-bar .bb-icon { font-size: 18px; }
+
+  /* 收起/展开详情 */
+  .detail-toggle {
+    text-align: center;
+    padding: 12px 0;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--gray-5);
+    user-select: none;
+    border-top: 1px solid var(--gray-2);
+    transition: background .15s;
+  }
+  .detail-toggle:hover { background: var(--gray-1); }
+  .detail-toggle .arrow { transition: transform .2s; display: inline-block; margin-right: 4px; }
+  .detail-toggle.open .arrow { transform: rotate(180deg); }
+
+  /* 详情区域 */
+  .detail-area { padding: 0 24px 24px; }
+
+  /* 码率对比卡片 */
+  .bitrate-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .br-card {
+    background: var(--gray-1);
+    border-radius: var(--radius-sm);
+    padding: 16px 20px;
+  }
+  .br-card .br-label { font-size: 12px; font-weight: 500; color: var(--primary-dark); margin-bottom: 4px; }
+  .br-card .br-label.trans { color: var(--blue); }
+  .br-card .br-val { font-size: 32px; font-weight: 700; color: var(--gray-6); }
+  .br-card .br-val .br-unit { font-size: 14px; font-weight: 400; color: var(--gray-4); margin-left: 4px; }
+
+  /* 详细对比表 */
+  .detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .detail-table thead th {
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--gray-5);
+    background: var(--gray-1);
+    border-bottom: 1px solid var(--gray-2);
+  }
+  .detail-table thead th:not(:first-child) { text-align: right; }
+  .detail-table tbody td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--gray-2);
+  }
+  .detail-table tbody td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+  .detail-table tbody tr:last-child td { border-bottom: none; }
+  .detail-table .row-label { font-weight: 500; color: var(--gray-6); }
+  .detail-table .diff-green { color: var(--primary-dark); font-weight: 600; }
+  .detail-table .diff-red { color: var(--red); font-weight: 600; }
+  .detail-table .highlight-row { background: var(--primary-bg); }
+  .detail-table .highlight-row td { font-weight: 600; color: var(--primary-dark); }
+
+  /* 话术区 */
+  .talk-section { margin-top: 20px; }
+  .talk-section .ts-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .talk-box {
+    background: var(--gray-1);
+    border-radius: var(--radius-sm);
+    padding: 16px 18px;
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--gray-6);
+    position: relative;
+  }
+  .talk-box .copy-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 4px 12px;
+    font-size: 12px;
+    border: 1px solid var(--gray-2);
+    border-radius: 4px;
+    background: var(--gray-0);
+    cursor: pointer;
+    color: var(--gray-5);
+    transition: all .15s;
+  }
+  .talk-box .copy-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+  /* 刊例价参考 */
+  .price-ref-toggle {
+    text-align: center;
+    padding: 12px 0 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--blue);
+    user-select: none;
+  }
+  .price-ref-toggle:hover { text-decoration: underline; }
+  .price-ref { font-size: 12px; color: var(--gray-4); padding: 0 24px 20px; }
+  .price-ref table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: 12px;
+  }
+  .price-ref th, .price-ref td {
+    padding: 6px 10px;
+    border: 1px solid var(--gray-2);
+    text-align: center;
+  }
+  .price-ref th { background: var(--gray-1); font-weight: 600; color: var(--gray-5); }
+  .price-ref .hl { background: #fffbe6; font-weight: 600; }
+
+  /* 响应式 */
+  @media (max-width: 768px) {
+    .form-grid { grid-template-columns: 1fr 1fr; }
+    .fg.span2 { grid-column: span 2; }
+    .hero-card .hero-amount { font-size: 36px; }
+    .hero-card .sub-metrics { flex-wrap: wrap; gap: 12px; }
+    .bitrate-cards { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 480px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .fg.span2 { grid-column: span 1; }
+    .result-header { flex-direction: column; align-items: flex-start; }
+    .result-header .right-inputs { flex-wrap: wrap; gap: 8px; }
+    .result-header .ri-group input { width: 64px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- ===== 页头 ===== -->
+  <div class="page-header">
+    <h1>降本效果汇总</h1>
+    <div class="ref-link">
+      刊例价来源：<a href="https://cloud.tencent.com/document/product/267/39889" target="_blank">腾讯云直播转码计费</a>（2026-01-29）
+    </div>
+  </div>
+
+  <!-- ===== 输入面板 ===== -->
+  <div class="input-panel" id="inputPanel">
+    <div class="input-panel-header">
+      <div class="title">⚙️ 参数设置</div>
+    </div>
+
+    <!-- 快捷预设（含末尾音频直播选项） -->
+    <div class="presets-row" id="presetBtns"></div>
+
+    <div class="form-grid" id="formGrid">
+      <div class="fg" id="grpCodec">
+        <label>编码方式</label>
+        <select id="selCodec">
+          <option value="H.264">H.264（主流）</option>
+          <option value="H.265">H.265（高压缩）</option>
+          <option value="H.266">H.266（新一代）</option>
+          <option value="AV1">AV1（开源高效）</option>
+        </select>
+      </div>
+      <div class="fg" id="grpRes">
+        <label>输出分辨率</label>
+        <select id="selRes">
+          <option value="480P">480P</option>
+          <option value="720P">720P</option>
+          <option value="1080P" selected>1080P</option>
+          <option value="2K">2K</option>
+          <option value="4K">4K</option>
+        </select>
+      </div>
+      <div class="fg" id="grpTranscodePrice">
+        <label>转码单价 <span class="u">元/分钟</span></label>
+        <input type="number" id="inTranscodePrice" value="0.2511" step="0.0001">
+        <div class="hint" id="transPriceHint">极速高清刊例价，随编码/分辨率自动变化，也可直接手动修改</div>
+      </div>
+      <div class="fg" id="grpOrigBitrate">
+        <label>原始流码率 <span class="u">Kbps</span></label>
+        <input type="number" id="inOrigBitrate" value="3500" min="100" step="100">
+      </div>
+      <div class="fg" id="grpTransBitrate">
+        <label>转码后码率 <span class="u">Kbps</span></label>
+        <input type="number" id="inTransBitrate" value="1800" min="100" step="100">
+      </div>
+
+      <!-- 音频（默认隐藏） -->
+      <div class="fg hidden" id="grpOrigAudioBitrate">
+        <label>原始音频码率 <span class="u">Kbps</span></label>
+        <input type="number" id="inOrigAudioBitrate" value="192" min="32" step="32">
+      </div>
+      <div class="fg hidden" id="grpTransAudioBitrate">
+        <label>转码后音频码率 <span class="u">Kbps</span></label>
+        <input type="number" id="inTransAudioBitrate" value="128" min="32" step="32">
+      </div>
+
+      <!-- 通用 -->
+      <div class="fg">
+        <label>CDN 流量单价 <span class="u">元/GB</span></label>
+        <select id="selTrafficPrice">
+          <option value="0.26">0.26（0~2TB）</option>
+          <option value="0.24">0.24（2~10TB）</option>
+          <option value="0.22">0.22（10~50TB）</option>
+          <option value="0.20">0.20（50~100TB）</option>
+          <option value="0.16">0.16（≥100TB）</option>
+          <option value="custom">自定义…</option>
+        </select>
+      </div>
+      <div class="fg hidden" id="grpCustomTrafficPrice">
+        <label>自定义流量单价 <span class="u">元/GB</span></label>
+        <input type="number" id="inCustomTrafficPrice" value="0.15" min="0.01" step="0.01">
+      </div>
+    </div>
+
+    <button class="calc-btn" id="btnCalc">📊 计算降本效果</button>
+  </div>
+
+  <!-- ===== 结果面板（参照截图布局） ===== -->
+  <div class="result-panel hidden" id="resultPanel">
+    <!-- 顶部标题行 -->
+    <div class="result-header">
+      <div class="title">降本效果汇总</div>
+      <div class="right-inputs">
+        <div class="ri-group">
+          <label>观看人数</label>
+          <input type="number" id="inViewers" value="1000" min="1" step="1">
+          <span class="ri-unit">人</span>
+        </div>
+        <div class="ri-group">
+          <label>观看时长</label>
+          <input type="number" id="inDuration" value="120" min="1" step="1">
+          <span class="ri-unit">分钟</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 大卡片：净节省 -->
+    <div class="hero-card" id="heroCard">
+      <div class="icon-circle">
+        <svg viewBox="0 0 24 24"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
+      </div>
+      <div class="hero-label">预计净节省费用</div>
+      <div class="hero-amount" id="heroAmount">¥0.00</div>
+      <div class="sub-metrics" id="subMetrics"></div>
+    </div>
+
+    <!-- 盈亏平衡条 -->
+    <div class="balance-bar" id="balanceBar"></div>
+
+    <!-- 收起/展开详情 -->
+    <div class="detail-toggle" id="detailToggle">
+      <span class="arrow">∧</span> 展开详情
+    </div>
+
+    <!-- 详情区域 -->
+    <div class="detail-area hidden" id="detailArea">
+      <!-- 码率卡片 -->
+      <div class="bitrate-cards" id="bitrateCards"></div>
+
+      <!-- 对比表 -->
+      <table class="detail-table" id="detailTable"></table>
+
+      <!-- 话术 -->
+      <div class="talk-section">
+        <div class="ts-title">💬 给客户的话术</div>
+        <div class="talk-box" id="talkBox">
+          <span class="copy-btn" id="btnCopy">复制</span>
+          <div id="talkContent"></div>
+        </div>
+      </div>
+
+      <!-- 刊例价参考 -->
+      <div class="price-ref-toggle" id="togglePrice">▼ 展开刊例价参考表</div>
+      <div class="price-ref hidden" id="priceRefArea"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================================================================
+   数据：基于官网 2026-01-29 刊例价
+   =================================================================== */
+var TESHD_PRICE = {
+  'H.264': { '480P': 0.066, '720P': 0.1256, '1080P': 0.2511, '2K': 0.5022, '4K': 1.0044 },
+  'H.265': { '480P': 0.198, '720P': 0.3768, '1080P': 0.7533, '2K': 1.5066, '4K': 3.0132 },
+  'H.266': { '480P': 0.4752, '720P': 0.9043, '1080P': 1.8079, '2K': 3.6158, '4K': 7.2317 },
+  'AV1':   { '480P': 0.396, '720P': 0.7536, '1080P': 1.5066, '2K': 3.0132, '4K': 6.0264 }
+};
+var AUDIO_TRANSCODE_PRICE = 0.0056;
+
+var PRESETS = [
+  { label: '游戏 H.264 480P', codec: 'H.264', res: '480P', orig: 1500, trans: 800 },
+  { label: '秀场 H.264 720P', codec: 'H.264', res: '720P', orig: 2500, trans: 1300 },
+  { label: '电商 H.264 1080P', codec: 'H.264', res: '1080P', orig: 4000, trans: 2000 },
+  { label: '体育 H.264 1080P', codec: 'H.264', res: '1080P', orig: 6000, trans: 3000 },
+  { label: '影视 H.265 1080P', codec: 'H.265', res: '1080P', orig: 4000, trans: 1600 },
+  { label: '超清 H.265 4K', codec: 'H.265', res: '4K', orig: 15000, trans: 7500 },
+  { label: '教育 H.264 720P', codec: 'H.264', res: '720P', orig: 2000, trans: 1000 }
+];
+
+/* ===================================================================
+   DOM
+   =================================================================== */
+var $ = function(s) { return document.querySelector(s); };
+var $$ = function(s) { return document.querySelectorAll(s); };
+
+var selCodec = $('#selCodec');
+var selRes = $('#selRes');
+var inOrig = $('#inOrigBitrate');
+var inTrans = $('#inTransBitrate');
+var inOrigAudio = $('#inOrigAudioBitrate');
+var inTransAudio = $('#inTransAudioBitrate');
+var inDuration = $('#inDuration');
+var inViewers = $('#inViewers');
+var selTraffic = $('#selTrafficPrice');
+var inCustomTraffic = $('#inCustomTrafficPrice');
+var inTranscodePrice = $('#inTranscodePrice');
+
+var currentScene = 'video';
+
+/* ===================================================================
+   预设（含末尾"音频直播"按钮）
+   =================================================================== */
+(function renderPresets() {
+  var box = $('#presetBtns');
+  PRESETS.forEach(function(p, i) {
+    var chip = document.createElement('div');
+    chip.className = 'preset-chip';
+    chip.textContent = p.label;
+    chip.setAttribute('data-idx', String(i));
+    chip.addEventListener('click', function() {
+      var idx = parseInt(this.getAttribute('data-idx'));
+      // 点击视频预设 → 自动切回视频模式
+      if (currentScene !== 'video') switchScene('video');
+      selCodec.value = PRESETS[idx].codec;
+      selRes.value = PRESETS[idx].res;
+      inOrig.value = PRESETS[idx].orig;
+      inTrans.value = PRESETS[idx].trans;
+      syncTranscodePrice();
+      $$('.preset-chip').forEach(function(c) { c.classList.remove('active'); });
+      this.classList.add('active');
+    });
+    box.appendChild(chip);
+  });
+  // 末尾追加"音频直播"按钮
+  var audioChip = document.createElement('div');
+  audioChip.className = 'preset-chip';
+  audioChip.textContent = '🎵 音频直播';
+  audioChip.id = 'presetAudio';
+  audioChip.addEventListener('click', function() {
+    $$('.preset-chip').forEach(function(c) { c.classList.remove('active'); });
+    this.classList.add('active');
+    switchScene('audio');
+  });
+  box.appendChild(audioChip);
+})();
+
+/* ===================================================================
+   场景切换
+   =================================================================== */
+function switchScene(scene) {
+  currentScene = scene;
+  var isVideo = scene === 'video';
+  $('#grpCodec').classList.toggle('hidden', !isVideo);
+  $('#grpRes').classList.toggle('hidden', !isVideo);
+  $('#grpOrigBitrate').classList.toggle('hidden', !isVideo);
+  $('#grpTransBitrate').classList.toggle('hidden', !isVideo);
+  $('#grpOrigAudioBitrate').classList.toggle('hidden', isVideo);
+  $('#grpTransAudioBitrate').classList.toggle('hidden', isVideo);
+  if (isVideo) {
+    syncTranscodePrice();
+    $('#transPriceHint').textContent = '极速高清刊例价，随编码/分辨率自动变化，也可直接手动修改';
+  } else {
+    inTranscodePrice.value = AUDIO_TRANSCODE_PRICE;
+    $('#transPriceHint').textContent = '音频转码刊例价 0.0056 元/分钟，也可直接手动修改';
+  }
+  $('#resultPanel').classList.add('hidden');
+}
+
+/* 不再需要 selScene 的 change 监听 */
+
+/* ===================================================================
+   联动：编码+分辨率 → 转码单价
+   =================================================================== */
+function syncTranscodePrice() {
+  if (currentScene !== 'video') return;
+  var p = TESHD_PRICE[selCodec.value] && TESHD_PRICE[selCodec.value][selRes.value];
+  if (p !== undefined) inTranscodePrice.value = p;
+}
+selCodec.addEventListener('change', function() {
+  syncTranscodePrice();
+  $$('.preset-chip').forEach(function(c) { c.classList.remove('active'); });
+});
+selRes.addEventListener('change', function() {
+  syncTranscodePrice();
+  $$('.preset-chip').forEach(function(c) { c.classList.remove('active'); });
+});
+
+selTraffic.addEventListener('change', function() {
+  $('#grpCustomTrafficPrice').classList.toggle('hidden', this.value !== 'custom');
+});
+
+/* ===================================================================
+   核心计算
+   =================================================================== */
+function getTrafficPrice() {
+  return selTraffic.value === 'custom'
+    ? parseFloat(inCustomTraffic.value) || 0.26
+    : parseFloat(selTraffic.value);
+}
+
+function calculate() {
+  var isVideo = currentScene === 'video';
+  var origBitrate = isVideo ? (parseFloat(inOrig.value) || 0) : (parseFloat(inOrigAudio.value) || 0);
+  var transBitrate = isVideo ? (parseFloat(inTrans.value) || 0) : (parseFloat(inTransAudio.value) || 0);
+  var duration = parseFloat(inDuration.value) || 0;
+  var viewers = parseFloat(inViewers.value) || 0;
+  var trafficPrice = getTrafficPrice();
+  var transcodePrice = parseFloat(inTranscodePrice.value) || 0;
+
+  if (origBitrate <= 0 || transBitrate <= 0) { alert('码率必须大于 0'); return null; }
+  if (transBitrate >= origBitrate) { alert('转码后码率必须小于原始码率'); return null; }
+  if (duration <= 0) { alert('观看时长必须大于 0'); return null; }
+  if (viewers <= 0) { alert('观看人数必须大于 0'); return null; }
+
+  var bitrateDiff = origBitrate - transBitrate;
+  var compressionRatio = (bitrateDiff / origBitrate) * 100;
+
+  // 流量 GB：码率(Kbps) * duration(min) * 60(s) / 8 / 1e6
+  var origTrafficPerUser = origBitrate * duration * 60 / 8 / 1e6;
+  var transTrafficPerUser = transBitrate * duration * 60 / 8 / 1e6;
+  var savedTrafficPerUser = origTrafficPerUser - transTrafficPerUser;
+
+  var origTrafficTotal = origTrafficPerUser * viewers;
+  var transTrafficTotal = transTrafficPerUser * viewers;
+  var savedTrafficTotal = origTrafficTotal - transTrafficTotal;
+
+  var origTrafficCost = origTrafficTotal * trafficPrice;
+  var transTrafficCost = transTrafficTotal * trafficPrice;
+  var trafficSaved = origTrafficCost - transTrafficCost;
+
+  var transcodeCost = duration * transcodePrice;
+  var netSaved = trafficSaved - transcodeCost;
+
+  var savedPerUser = savedTrafficPerUser * trafficPrice;
+  var balanceViewers = savedPerUser > 0 ? Math.ceil(transcodeCost / savedPerUser) : Infinity;
+
+  return {
+    isVideo: isVideo,
+    codec: isVideo ? selCodec.value : '音频',
+    resolution: isVideo ? selRes.value : '-',
+    origBitrate: origBitrate,
+    transBitrate: transBitrate,
+    bitrateDiff: bitrateDiff,
+    compressionRatio: compressionRatio,
+    duration: duration,
+    viewers: viewers,
+    trafficPrice: trafficPrice,
+    transcodePrice: transcodePrice,
+    origTrafficPerUser: origTrafficPerUser,
+    transTrafficPerUser: transTrafficPerUser,
+    savedTrafficPerUser: savedTrafficPerUser,
+    origTrafficTotal: origTrafficTotal,
+    transTrafficTotal: transTrafficTotal,
+    savedTrafficTotal: savedTrafficTotal,
+    origTrafficCost: origTrafficCost,
+    transTrafficCost: transTrafficCost,
+    trafficSaved: trafficSaved,
+    transcodeCost: transcodeCost,
+    netSaved: netSaved,
+    balanceViewers: balanceViewers,
+    savedPerUser: savedPerUser
+  };
+}
+
+/* ===================================================================
+   格式化
+   =================================================================== */
+function fmtNum(n, d) {
+  if (n === Infinity || n === -Infinity) return '∞';
+  if (d === undefined) d = 2;
+  return n.toLocaleString('zh-CN', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+
+/* ===================================================================
+   渲染结果
+   =================================================================== */
+function renderResult(r) {
+  var panel = $('#resultPanel');
+  panel.classList.remove('hidden');
+
+  // 同步顶栏输入框的值
+  inViewers.value = r.viewers;
+  inDuration.value = r.duration;
+
+  // 大卡片
+  var heroCard = $('#heroCard');
+  var heroAmount = $('#heroAmount');
+  if (r.netSaved >= 0) {
+    heroAmount.textContent = '¥' + fmtNum(r.netSaved);
+    heroAmount.className = 'hero-amount';
+    heroCard.style.background = 'var(--primary-bg)';
+  } else {
+    heroAmount.textContent = '-¥' + fmtNum(Math.abs(r.netSaved));
+    heroAmount.className = 'hero-amount negative';
+    heroCard.style.background = 'var(--red-bg)';
+  }
+
+  // 子指标
+  var smHtml = '';
+  smHtml += '<span class="sm-item"><span class="sm-icon">〰️</span> 压缩比 <span class="sm-val">' + fmtNum(r.compressionRatio, 1) + '%</span></span>';
+  smHtml += '<span class="sm-item"><span class="sm-icon">📦</span> 节省流量 <span class="sm-val">' + fmtNum(r.savedTrafficTotal, 1) + ' GB</span></span>';
+  smHtml += '<span class="sm-item"><span class="sm-icon">✨</span> 画质提升 <span class="sm-val">3.2</span></span>';
+  $('#subMetrics').innerHTML = smHtml;
+
+  // 盈亏平衡条
+  var bar = $('#balanceBar');
+  if (r.balanceViewers === Infinity) {
+    bar.className = 'balance-bar loss';
+    bar.innerHTML = '<span class="bb-icon">⚠️</span> 当前配置下无法达到盈亏平衡，不建议开启极速高清转码';
+  } else if (r.viewers >= r.balanceViewers) {
+    bar.className = 'balance-bar profit';
+    bar.innerHTML = '<span class="bb-icon">👥</span> 当下行观看用户 >= <strong>' + r.balanceViewers.toLocaleString() + '</strong> 人时，启用当前极速高清转码配置比直接透传源更划算';
+  } else {
+    bar.className = 'balance-bar loss';
+    bar.innerHTML = '<span class="bb-icon">👥</span> 需 ≥ <strong>' + r.balanceViewers.toLocaleString() + '</strong> 人才划算，当前 ' + r.viewers.toLocaleString() + ' 人未达平衡点';
+  }
+
+  // 码率卡片
+  var bcHtml = '';
+  var brLabel = r.isVideo ? '流码率' : '音频码率';
+  bcHtml += '<div class="br-card"><div class="br-label">原始' + brLabel + '</div><div class="br-val">' + fmtNum(r.origBitrate, 0) + '<span class="br-unit">Kbps</span></div></div>';
+  bcHtml += '<div class="br-card"><div class="br-label trans">转码' + brLabel + '</div><div class="br-val">' + fmtNum(r.transBitrate, 0) + '<span class="br-unit">Kbps</span></div></div>';
+  $('#bitrateCards').innerHTML = bcHtml;
+
+  // 对比表
+  var tHtml = '';
+  tHtml += '<thead><tr><th>项目</th><th>原始流</th><th>转码流</th><th>差值</th></tr></thead>';
+  tHtml += '<tbody>';
+  tHtml += '<tr><td class="row-label">总流量</td><td>' + fmtNum(r.origTrafficTotal) + ' GB</td><td>' + fmtNum(r.transTrafficTotal) + ' GB</td><td class="diff-green">-' + fmtNum(r.savedTrafficTotal) + ' GB</td></tr>';
+  tHtml += '<tr><td class="row-label">流量费用</td><td>¥' + fmtNum(r.origTrafficCost) + '</td><td>¥' + fmtNum(r.transTrafficCost) + '</td><td class="diff-green">-¥' + fmtNum(r.trafficSaved) + '</td></tr>';
+  tHtml += '<tr><td class="row-label">转码费用</td><td>-</td><td>¥' + fmtNum(r.transcodeCost) + '</td><td>-</td></tr>';
+  var netClass = r.netSaved >= 0 ? 'diff-green' : 'diff-red';
+  var netText = r.netSaved >= 0 ? '¥' + fmtNum(r.netSaved) : '-¥' + fmtNum(Math.abs(r.netSaved));
+  tHtml += '<tr class="highlight-row"><td class="row-label">净节省</td><td>-</td><td>-</td><td class="' + netClass + '"><strong>' + netText + '</strong></td></tr>';
+  tHtml += '</tbody>';
+  $('#detailTable').innerHTML = tHtml;
+
+  // 话术
+  renderTalk(r);
+
+  // 刊例价参考
+  renderPriceRef(r);
+
+  // 默认收起详情
+  $('#detailArea').classList.add('hidden');
+  var toggle = $('#detailToggle');
+  toggle.classList.remove('open');
+  toggle.innerHTML = '<span class="arrow">∨</span> 展开详情';
+
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ===================================================================
+   话术
+   =================================================================== */
+function renderTalk(r) {
+  var text = '';
+  if (r.isVideo) {
+    text += '<strong>视频直播场景</strong>（极速高清 ' + r.codec + ' ' + r.resolution + '）<br><br>';
+    text += '开启极速高清转码后，码率从 ' + fmtNum(r.origBitrate, 0) + 'Kbps 降至 ' + fmtNum(r.transBitrate, 0) + 'Kbps，压缩比达 ' + fmtNum(r.compressionRatio, 1) + '%，画质不降反升。<br><br>';
+    text += '转码费是固定开销（¥' + fmtNum(r.transcodeCost) + '/' + r.duration + '分钟），不管多少人看都只收一份；省下来的流量费跟人头成正比。<br><br>';
+    if (r.balanceViewers === Infinity) {
+      text += '⚠️ 当前配置下无法达到盈亏平衡点，建议调整参数。';
+    } else {
+      text += '👉 <strong>盈亏平衡点 = ' + r.balanceViewers.toLocaleString() + ' 人</strong>。';
+      if (r.viewers >= r.balanceViewers) {
+        text += '当前 ' + r.viewers.toLocaleString() + ' 人已超过平衡点，预计净省 ¥' + fmtNum(r.netSaved) + '，观众越多越划算。';
+      } else {
+        text += '当前 ' + r.viewers.toLocaleString() + ' 人未到平衡点，建议观众量上来后开启。';
+      }
+    }
+  } else {
+    text += '<strong>音频直播场景</strong><br><br>';
+    text += '音频转码费极低（¥0.0056/分钟），码率从 ' + fmtNum(r.origBitrate, 0) + 'Kbps 降至 ' + fmtNum(r.transBitrate, 0) + 'Kbps，压缩 ' + fmtNum(r.compressionRatio, 1) + '%。<br><br>';
+    if (r.balanceViewers === Infinity) {
+      text += '⚠️ 当前配置下无法达到盈亏平衡点。';
+    } else {
+      text += '👉 <strong>盈亏平衡点 = ' + r.balanceViewers.toLocaleString() + ' 人</strong>。音频转码便宜，基本开了就划算。';
+    }
+  }
+  text += '<br><br><span style="color:var(--gray-4);font-size:11px">计算依据：CDN 流量 ¥' + r.trafficPrice + '/GB，转码 ¥' + r.transcodePrice + '/分钟，时长 ' + r.duration + ' 分钟 | 腾讯云官网 2026-01-29 刊例价</span>';
+  $('#talkContent').innerHTML = text;
+}
+
+/* ===================================================================
+   刊例价参考表
+   =================================================================== */
+function renderPriceRef(r) {
+  var html = '<p style="margin-bottom:8px;">极速高清转码完整刊例价（元/分钟），当前选中项高亮：</p>';
+  html += '<table><thead><tr><th>编码</th><th>480P</th><th>720P</th><th>1080P</th><th>2K</th><th>4K</th></tr></thead><tbody>';
+  ['H.264', 'H.265', 'H.266', 'AV1'].forEach(function(c) {
+    html += '<tr><td><strong>' + c + '</strong></td>';
+    ['480P', '720P', '1080P', '2K', '4K'].forEach(function(res) {
+      var price = TESHD_PRICE[c][res];
+      var isHL = r.isVideo && c === r.codec && res === r.resolution;
+      html += '<td class="' + (isHL ? 'hl' : '') + '">' + price + '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  html += '<p style="margin-top:8px;">音频转码固定刊例价：<strong>0.0056 元/分钟</strong></p>';
+  $('#priceRefArea').innerHTML = html;
+}
+
+/* ===================================================================
+   展开/收起详情
+   =================================================================== */
+$('#detailToggle').addEventListener('click', function() {
+  var area = $('#detailArea');
+  var isHidden = area.classList.toggle('hidden');
+  this.classList.toggle('open', !isHidden);
+  if (isHidden) {
+    this.innerHTML = '<span class="arrow">∨</span> 展开详情';
+  } else {
+    this.innerHTML = '<span class="arrow">∧</span> 收起详情';
+  }
+});
+
+$('#togglePrice').addEventListener('click', function() {
+  var area = $('#priceRefArea');
+  var hidden = area.classList.toggle('hidden');
+  this.textContent = hidden ? '▼ 展开刊例价参考表' : '▲ 收起刊例价参考表';
+});
+
+/* ===================================================================
+   复制
+   =================================================================== */
+$('#btnCopy').addEventListener('click', function() {
+  var raw = $('#talkContent').innerText;
+  navigator.clipboard.writeText(raw).then(function() {
+    var btn = $('#btnCopy');
+    btn.textContent = '✅ 已复制';
+    setTimeout(function() { btn.textContent = '复制'; }, 1500);
+  });
+});
+
+/* ===================================================================
+   计算按钮
+   =================================================================== */
+$('#btnCalc').addEventListener('click', function() {
+  var r = calculate();
+  if (r) renderResult(r);
+});
+
+/* ===================================================================
+   顶栏输入框实时自动重算（无需按钮）
+   =================================================================== */
+var _recalcTimer = null;
+function autoRecalc() {
+  clearTimeout(_recalcTimer);
+  _recalcTimer = setTimeout(function() {
+    // 仅在结果面板已显示时才自动重算
+    if ($('#resultPanel').classList.contains('hidden')) return;
+    var r = calculate();
+    if (r) renderResult(r);
+  }, 300);
+}
+$('#inViewers').addEventListener('input', autoRecalc);
+$('#inDuration').addEventListener('input', autoRecalc);
+
+syncTranscodePrice();
+</script>
+</body>
+</html>
